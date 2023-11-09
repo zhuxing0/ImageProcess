@@ -6,7 +6,7 @@ import torch.nn.functional as F
 
 from utils import one_hot_embedding
 from torch.autograd import Variable
-
+import pdb
 
 class FocalLoss(nn.Module):
     def __init__(self, num_classes=20):
@@ -91,6 +91,8 @@ class FocalLoss(nn.Module):
         masked_cls_preds = cls_preds[mask].view(-1,self.num_classes)
         cls_loss = self.focal_loss_alt(masked_cls_preds, cls_targets[pos_neg])
 
-        print('loc_loss: %.3f | cls_loss: %.3f' % (loc_loss.data[0]/num_pos, cls_loss.data[0]/num_pos), end=' | ')
+        # print('loc_loss: %.3f | cls_loss: %.3f' % (loc_loss.data[0]/num_pos, cls_loss.data[0]/num_pos), end=' | ') # 低版本pytorch用法
+        print('loc_loss: %.3f | cls_loss: %.3f' % (loc_loss.item()/num_pos, cls_loss.item()/num_pos), end=' | ')
+
         loss = (loc_loss+cls_loss)/num_pos
         return loss

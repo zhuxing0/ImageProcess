@@ -18,6 +18,8 @@ from PIL import Image
 from encoder import DataEncoder
 from transform import resize, random_flip, random_crop, center_crop
 
+import xml.etree.ElementTree as ET
+import pdb
 
 class ListDataset(data.Dataset):
     def __init__(self, root, list_file, train, transform, input_size):
@@ -33,6 +35,7 @@ class ListDataset(data.Dataset):
         self.train = train
         self.transform = transform
         self.input_size = input_size
+        self.root_annotations = root.replace('JPEGImages', 'Annotations')
 
         self.fnames = []
         self.boxes = []
@@ -45,17 +48,21 @@ class ListDataset(data.Dataset):
             self.num_samples = len(lines)
 
         for line in lines:
-            splited = line.strip().split()
-            self.fnames.append(splited[0])
-            num_boxes = (len(splited) - 1) // 5
+            fname = line.strip()
+            self.fnames.append(fname)
+
             box = []
             label = []
-            for i in range(num_boxes):
-                xmin = splited[1+5*i]
-                ymin = splited[2+5*i]
-                xmax = splited[3+5*i]
-                ymax = splited[4+5*i]
-                c = splited[5+5*i]
+            xml_path = os.path.join(self.root_annotations, fname+'.xml')
+            tree = ET.parse(xml_path)
+            childs = tree.getroot()
+            elements = childs.findall('object')
+            for element in elements:
+                xmin = element.find('bndbox').find('xmin').text
+                ymin = element.find('bndbox').find('ymin').text
+                xmax = element.find('bndbox').find('xmax').text
+                ymax = element.find('bndbox').find('ymax').text
+                c = 0
                 box.append([float(xmin),float(ymin),float(xmax),float(ymax)])
                 label.append(int(c))
             self.boxes.append(torch.Tensor(box))
@@ -74,7 +81,7 @@ class ListDataset(data.Dataset):
         '''
         # Load image and boxes.
         fname = self.fnames[idx]
-        img = Image.open(os.path.join(self.root, fname))
+        img = Image.open(os.path.join(self.root, fname+'.jpg'))
         if img.mode != 'RGB':
             img = img.convert('RGB')
 
@@ -133,9 +140,9 @@ def test():
         transforms.ToTensor(),
         transforms.Normalize((0.485,0.456,0.406), (0.229,0.224,0.225))
     ])
-    dataset = ListDataset(root='/mnt/hgfs/D/download/PASCAL_VOC/voc_all_images',
-                          list_file='./data/voc12_train.txt', train=True, transform=transform, input_size=600)
-    dataloader = torch.utils.data.DataLoader(dataset, batch_size=8, shuffle=False, num_workers=1, collate_fn=dataset.collate_fn)
+    dataset = ListDataset(root='/C/Users/26470/Desktop/2023数图课件/VOC2007/JPEGImages',
+                          list_file='./data/val.txt', train=False, transform=transform, input_size=600)
+    dataloader = torch.utils.data.DataLoader(dataset, batch_size=4, shuffle=False, num_workers=1, collate_fn=dataset.collate_fn)
 
     for images, loc_targets, cls_targets in dataloader:
         print(images.size())
